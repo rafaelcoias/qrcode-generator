@@ -1,0 +1,34 @@
+#menu-btn {
+  cursor: pointer;
+  transition: all 0.35s ease-in-out;
+}
+
+.menu-btn-bar {
+  transition: all 0.35s ease-in-out;
+}
+
+/* Styles when menu is active */
+#menu-btn.active .menu-btn-bar:nth-child(1) {
+  transform: rotate(45deg) translate(0.35rem, 0.35rem);
+}
+
+#menu-btn.active .menu-btn-bar:nth-child(2) {
+  opacity: 0;
+}
+
+#menu-btn.active .menu-btn-bar:nth-child(3) {
+  transform: rotate(-45deg) translate(0.35rem, -0.35rem);
+}
+
+.navbar-submenu a {
+  opacity: 0;
+  transform: translateX(-2rem);
+  animation: slide-in 500ms forwards;
+}
+
+@keyframes slide-in {
+  100% {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
