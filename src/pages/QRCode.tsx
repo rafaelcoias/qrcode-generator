@@ -6,21 +6,24 @@ import { useNavigate, useParams } from "react-router-dom";
 import Download from "../content/icons/download.png";
 import { db } from "../firebase";
 import { useItems } from "../context";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+
 export default function QRCodePage() {
   const navigate = useNavigate();
   const { id } = useParams();
   const { user, items, setItems } = useItems();
 
   const ref = useRef<QRCode>();
-  const [name, setName] = useState("");
-  const [bgColor, setBgColor] = useState("#ffffff");
-  const [fgColor, setFgColor] = useState("#000000");
-  const [size, setSize] = useState(256);
-  const [eyeColor, setEyeColor] = useState("#000000");
+  const [name, setName] = useState<string>("");
+  const [bgColor, setBgColor] = useState<string>("#ffffff");
+  const [fgColor, setFgColor] = useState<string>("#000000");
+  const [eyeColor, setEyeColor] = useState<string>("#000000");
+  const [image, setImage] = useState<string>("");
+  const [link, setLink] = useState<string>("https://google.com");
   const [type, setType] = useState<"dots" | "squares" | "fluid">("squares");
-  const [eyeRadius, setEyeRadius] = useState(0);
-  const [image, setImage] = useState("");
-  const [link, setLink] = useState("https://google.com");
+  const [eyeRadius, setEyeRadius] = useState<number>(0);
+  const [size, setSize] = useState<number>(256);
 
   useEffect(() => {
     if (id && !items?.length) navigate("/home");
@@ -30,18 +33,23 @@ export default function QRCodePage() {
     if (!id || !items?.length) return;
     const fetchQRCode = async () => {
       const qrCode = items.find((item: any) => item.id === id);
+      if (!qrCode) {
+        toast.error("QRCode not found");
+        navigate("/home");
+        return;
+      }
       setBgColor(qrCode.bgColor);
       setFgColor(qrCode.fgColor);
       setSize(qrCode.size);
       setEyeColor(qrCode.eyeColor);
       setImage(qrCode.image);
-      setType(qrCode.type);
+      setType(qrCode.type as "dots" | "squares" | "fluid");
       setEyeRadius(qrCode.eyeRadius);
       setLink(qrCode.link);
       setName(qrCode.name);
     };
     fetchQRCode();
-  }, [id, items]);
+  }, [id, items, navigate]);
 
   const handleColorChange = (color: any, property: string) => {
     if (property === "bgColor") {
@@ -77,7 +85,7 @@ export default function QRCodePage() {
   const handleDownload = () => {
     const canvas = document.querySelector("#qrcode canvas");
     if (!canvas) {
-      alert("QR Code not found");
+      toast.error("Error exporting QRCode");
       return;
     }
     const dataURL = (canvas as HTMLCanvasElement).toDataURL("image/png");
@@ -102,7 +110,7 @@ export default function QRCodePage() {
   };
 
   const updateQRCode = async () => {
-    // TODO: update all info to firestore
+    if (!user) return;
     const qrcodesCollection = collection(db, "users", user.id, "qrcodes");
     const qrCodeDocRef = doc(qrcodesCollection, id);
     try {
@@ -136,15 +144,16 @@ export default function QRCodePage() {
         return item;
       });
       setItems(updatedItems);
-      alert("QRCode updated successfully");
+      toast.success("QRCode updated successfully");
       navigate("/home");
     } catch (error) {
-      alert("Error updating QRCode");
+      toast.error("Error updating QRCode");
       console.error("Error updating QRCode:", error);
     }
   };
 
   const saveQRCode = async () => {
+    if (!user) return;
     const qrcodesCollection = collection(db, "users", user.id, "qrcodes");
     try {
       await addDoc(qrcodesCollection, {
@@ -174,10 +183,10 @@ export default function QRCodePage() {
           name,
         },
       ]);
-      alert("QRCode saved successfully");
+      toast.success("QRCode saved successfully");
       navigate("/home");
     } catch (error) {
-      alert("Error saving QRCode");
+      toast.error("Error saving QRCode");
       console.error("Error saving QRCode:", error);
     }
   };
@@ -188,6 +197,7 @@ export default function QRCodePage() {
 
   return (
     <div className="flex flex-col gap-6 relative overflow-hidden min-h-screen py-20 px-[8vw] space-y-6">
+      <ToastContainer />
       <div className="flex justify-between">
         <button onClick={handleGoBack}>← Home</button>
       </div>

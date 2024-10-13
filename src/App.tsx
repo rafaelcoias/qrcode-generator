@@ -1,55 +1,30 @@
-import React, { useEffect, useState } from "react";
-
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { useItems } from "./context";
-
-// Components
-// import Navbar from "./components/Navbar";
 
 // Pages
 import Login from "./pages/Login";
 import Home from "./pages/Home";
 import NotFoundPage from "./pages/NotFound";
-import SignUp from "./pages/SignUp";
-import { auth, db } from "./firebase";
-import { collection, getDocs, query, where } from "firebase/firestore";
 import QRCode from "./pages/QRCode";
+import CircularProgress from "@mui/material/CircularProgress";
+import { useEffect, useState } from "react";
+import { auth } from "./firebase";
 
 function App() {
-  const { setUser } = useItems();
-
-  const [isLogged, setIsLogged] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const { user } = useItems();
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
   useEffect(() => {
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      setIsLogged(!!user);
-      if (user) {
-        const userInfo = await fetchUserInfo();
-        if (!userInfo) {
-          alert("User not found");
-          auth.signOut();
-          return;
-        }
-        setUser(userInfo);
+      setIsLoading(true);
+      if (!user) {
         setIsLoading(false);
-      } else {
-        setIsLoading(false);
-        setIsLogged(false);
+        return;
       }
+      setIsLoading(false);
     });
     return () => unsubscribe();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  const fetchUserInfo = async () => {
-    const usersRef = collection(db, "users");
-    const q = query(usersRef, where("email", "==", auth?.currentUser?.email));
-    const querySnapshot = await getDocs(q);
-    if (querySnapshot.empty) return null;
-    const userDoc = querySnapshot.docs[0];
-    const user = { id: userDoc.id, ...userDoc.data() };
-    return user;
-  };
+  }, []);
 
   const Layout = ({ children }: { children: any }) => {
     return (
@@ -65,7 +40,7 @@ function App() {
   if (isLoading)
     return (
       <div className="min-h-screen w-full flex justify-center items-center text-[2rem]">
-        <h1>Loading...</h1>
+        <CircularProgress />
       </div>
     );
 
@@ -73,8 +48,7 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route index element={<Login />} />
-        <Route path="signup" element={<SignUp />} />
-        {isLogged && (
+        {user && (
           <>
             <Route
               path="/home"

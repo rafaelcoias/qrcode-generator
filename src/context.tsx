@@ -1,52 +1,105 @@
 "use client";
 
 import React, { createContext, useState, useEffect, ReactNode } from "react";
-import { collection, getDocs } from "firebase/firestore";
-import { db } from "./firebase";
+import { addDoc, collection, getDocs, query, where } from "firebase/firestore";
+import { auth, db } from "./firebase";
+import { QRCode, User } from "./types/types";
+import CircularProgress from "@mui/material/CircularProgress";
 
-// Define the type for your context
 type ItemsContextType = {
-  items: any;
-  setItems: React.Dispatch<React.SetStateAction<any>>;
-  user: any;
-  setUser: React.Dispatch<React.SetStateAction<any>>;
+  items: QRCode[];
+  setItems: React.Dispatch<React.SetStateAction<QRCode[]>>;
+  user: User | null;
+  setUser: React.Dispatch<React.SetStateAction<User | null>>;
 };
 
-// Set default values for the context (use no-op for setItems and setUser initially)
 export const ItemsContext = createContext<ItemsContextType | null>(null);
 
 export const ItemsProvider = ({ children }: { children: ReactNode }) => {
-  const [items, setItems] = useState<any>(null);
-  const [user, setUser] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [items, setItems] = useState<QRCode[]>([]);
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-
-
+  // Fetch items from Firestore
   useEffect(() => {
     const fetchItems = async () => {
+      if (!user) return;
+      try {
         const itemsCollection = collection(db, "users", user.id, "qrcodes");
         const itemsSnapshot = await getDocs(itemsCollection);
         const itemsData = itemsSnapshot.docs.map((doc) => ({
           id: doc.id,
           ...doc.data(),
         }));
-        setItems(itemsData);
+        setItems(itemsData as QRCode[]);
+      } catch (error) {
+        console.error("Error fetching items: ", error);
+      }
     };
-    if (!user) return;
     setIsLoading(true);
     fetchItems();
     setIsLoading(false);
   }, [user]);
 
+  // Fetch user info from Firestore
+  useEffect(() => {
+    const unsubscribe = auth.onAuthStateChanged(async (user) => {
+      setIsLoading(true);
+      if (!user) {
+        setIsLoading(false);
+        return;
+      }
+      if (user) {
+        const userInfo = await fetchUserInfo();
+        if (!userInfo) {
+          auth.signOut();
+          setIsLoading(false);
+          return;
+        }
+        setUser(userInfo);
+      }
+      setIsLoading(false);
+    });
+    return () => unsubscribe();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const fetchUserInfo = async () => {
+    const usersRef = collection(db, "users");
+    const q = query(usersRef, where("email", "==", auth?.currentUser?.email));
+    const querySnapshot = await getDocs(q);
+    if (querySnapshot.empty) {
+      const user = auth?.currentUser;
+      if (!user) return null;
+      const userDoc = {
+        email: user.email,
+        name: user.displayName,
+        photoURL: user.photoURL,
+      };
+      const docRef = await addDoc(collection(db, "users"), userDoc);
+      return { id: docRef.id, ...userDoc };
+    }
+
+    const userDoc = querySnapshot.docs[0];
+    const user = {
+      id: userDoc.id,
+      name: userDoc.data().name,
+      email: userDoc.data().email,
+      photoURL: userDoc.data().photoURL,
+    };
+    return user;
+  };
+
   if (isLoading)
     return (
       <div className="min-h-screen w-full flex justify-center items-center text-[2rem]">
-        <h1>Loading...</h1>
+        <CircularProgress />
       </div>
     );
 
   return (
-    <ItemsContext.Provider value={{ items, setItems, user, setUser }}>
+    <ItemsContext.Provider
+      value={{ items, setItems, user, setUser }}
+    >
       {children}
     </ItemsContext.Provider>
   );

@@ -5,19 +5,9 @@ import { QRCode } from "react-qrcode-logo";
 import { deleteDoc, doc } from "firebase/firestore";
 import { auth, db } from "../firebase";
 import { signOut } from "firebase/auth";
-
-interface ItemI {
-  id: string;
-  name: string;
-  link: string;
-  image: string;
-  bgColor: string;
-  fgColor: string;
-  type: "squares" | "dots" | "fluid";
-  eyeColor: string;
-  eyeRadius: number;
-  cornerRadius: number;
-}
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
+import { QRCode as QRCodeI } from "../types/types";
 
 export default function Home() {
   const navigate = useNavigate();
@@ -27,16 +17,19 @@ export default function Home() {
     if (!window.confirm("Are you sure you want to delete this QRCode?")) {
       return;
     }
-    
+
     try {
+      if (!user) {
+        throw new Error("User is not authenticated");
+      }
       const qrCodeDocRef = doc(db, "users", user.id, "qrcodes", id);
       await deleteDoc(qrCodeDocRef);
-      const newItems = items.filter((ele: ItemI) => ele.id !== id);
+      const newItems = items.filter((ele: QRCodeI) => ele.id !== id);
       setItems(newItems);
-      alert("QRCode removed successfully");
+      toast.success("QRCode deleted successfully");
     } catch (error) {
       console.error("Error deleting document:", error);
-      alert("Error deleting QRCode");
+      toast.error("Error deleting QRCode");
     }
   };
 
@@ -51,6 +44,7 @@ export default function Home() {
 
   return (
     <div className="p-[2rem] space-y-6">
+      <ToastContainer />
       <div className="flex items-center justify-between">
         <h1 className="text-[1.5rem] seis:text-[2rem] font-bold">
           Welcome back {user?.name?.split(" ")[0] || user?.name} !
@@ -73,16 +67,14 @@ export default function Home() {
       </div>
       <div className="qrcode-container">
         {items && items.length !== 0 ? (
-          items.map((ele: ItemI, index: number) => {
+          items.map((ele: QRCodeI, index: number) => {
             return (
               <div key={index} className="flex flex-col items-center space-y-4">
                 <Link
                   to={`/${ele.id}`}
                   className="border shadow-lg w-[12rem] p-4 space-y-4 rounded-[25px]"
                 >
-                  <div
-                    className="w-full overflow-hidden"
-                  >
+                  <div className="w-full overflow-hidden">
                     <QRCode
                       size={256}
                       style={{ height: "auto", width: "100%" }}
@@ -92,7 +84,9 @@ export default function Home() {
                       logoHeight={60}
                       bgColor={ele.bgColor}
                       fgColor={ele.fgColor}
-                      qrStyle={ele.type}
+                      qrStyle={
+                        ele.type as "dots" | "squares" | "fluid" | undefined
+                      }
                       eyeColor={ele.eyeColor}
                       eyeRadius={ele.eyeRadius}
                     />

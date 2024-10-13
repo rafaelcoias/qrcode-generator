@@ -2,14 +2,17 @@ import React, { useEffect, useState } from "react";
 import { signInWithPopup, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "../firebase";
 import { useNavigate } from "react-router-dom";
+import { ToastContainer, toast } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 const LoginWithGoogle = () => {
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // Check if user is already logged in, if so, redirect to home
     const unsubscribe = auth.onAuthStateChanged(async (user) => {
-      if (user) navigate("/home");
+      if (!!user) navigate("/home");
       else setLoading(false);
     });
     return () => unsubscribe();
@@ -18,9 +21,10 @@ const LoginWithGoogle = () => {
   const handleGoogleLogin = async () => {
     const provider = new GoogleAuthProvider();
     try {
+      // Sign in with Google
       await signInWithPopup(auth, provider);
-      navigate("/home");
     } catch (error) {
+      toast.error("Error logging in with Google");
       console.error("Error logging in with Google:", error);
     }
   };
@@ -35,6 +39,7 @@ const LoginWithGoogle = () => {
 
   return (
     <div className="flex items-center justify-center w-full min-h-screen ">
+      <ToastContainer />
       <div
         style={{
           borderRadius: "10px",
@@ -43,8 +48,9 @@ const LoginWithGoogle = () => {
         }}
         className="space-y-6 w-[20rem] p-6"
       >
+        <h1>Welcome!</h1>
         <h2 className="font-bold">
-          Free and Fully Personalized QRCode Generator
+          Check Out This Free and Fully Personalized QRCode Generator
         </h2>
         <button
           onClick={handleGoogleLogin}
@@ -60,12 +66,6 @@ const LoginWithGoogle = () => {
         >
           Login with Google
         </button>
-        <p>
-          Don't have an account?{" "}
-          <a href="/signup" className="text-blue-400">
-            Sign up
-          </a>
-        </p>
       </div>
     </div>
   );
